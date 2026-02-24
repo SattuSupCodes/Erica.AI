@@ -1,0 +1,21 @@
+# Virtual environments
+venv/
+venv311/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Model weights
+*.pt
+*.pth
+
+# Data files
+data/
+memory.json
+erica_state.json
+
+# OS junk
+.DS_Store
+Thumbs.db
