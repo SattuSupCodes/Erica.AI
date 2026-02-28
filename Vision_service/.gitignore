@@ -1,0 +1,20 @@
+# Virtual environments
+ven/
+
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Model weights
+*.pt
+*.pth
+
+# Data files
+test_images/
+
+
+# OS junk
+.DS_Store
+Thumbs.db
