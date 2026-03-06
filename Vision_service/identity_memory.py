@@ -48,4 +48,8 @@ class IdentityMemory:
             }
             self.next_id +=1
             return new_id
+    def save_memory():
+        pass
+    def load_memory():
+        pass
         

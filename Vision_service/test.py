@@ -5,15 +5,13 @@ engine = FaceAnalysisEngine()
 identity = IdentityMemory(threshold=0.55)
 
 images = [
-    "test_images/jimin1.jpg",
-    "test_images/jimin2.jpg",
-    "test_images/jimin3.jpg",
-    "test_images/rose1.jpg",
-    "test_images/rose2.jpg",
-    "test_images/rose3.jpg",
-    "test_images/sabrina1.jpg",
-    "test_images/sabrina2.jpg",
-    "test_images/sabrina3.jpg",
+    "test_images/sattu1.jpeg",
+    "test_images/sattu2.jpeg",
+    "test_images/sattu3.jpeg",
+    "test_images/sattu4.jpeg",
+    "test_images/sattu5.jpeg",
+    "test_images/sattu6.jpeg",
+   
 ]
 for image_path in images:
     embeddings = engine.extract_embeddings(image_path)

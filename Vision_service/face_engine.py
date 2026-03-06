@@ -5,8 +5,8 @@ class FaceAnalysisEngine:
     def __init__(self):
         self.app = FaceAnalysis() 
         self.app.prepare(ctx_id=0)
-    def extract_embeddings(self,image_path):
-        img = cv2.imread(image_path)
+    def extract_embeddings(self,img):
+        
         
         if img is None:
             raise ValueError("uhh image not found? try again girlie")
