@@ -2,7 +2,7 @@ import math
 import json
 class EricaId_State:
     def __init__(self):
-        # self.user_models = {} -> a future concept
+        self.user_models = {}
         self.personality = {
             "curiosity": 0.8,
             "warmth": 0.6,
@@ -11,12 +11,15 @@ class EricaId_State:
             "formality":0.4
         }
         self.primary_user_id = None
-        self.attachment = 0.0
-        self.interaction_count = 0
-        self.current_session_user = None
-        self.session_start_time = None
-        self.last_seen_time = None
+        
+        self.attachment = 0.0,
+        self.interaction_count = 0,
+        self.current_session_user = None,
+        self.session_start_time = None,
+        self.last_seen_time = None,
         self.total_sessions = 0
+        
+        
     def upd_Identity(self, identity_id):
         
         if self.primary_user_id is None:
@@ -46,3 +49,8 @@ class EricaId_State:
         self.primary_user_id = data["primary_user_id"]
         self.attachment = data["attachment"]
         self.interaction_count = data["interaction_count"]
+        
+        
+        
+        
+        
