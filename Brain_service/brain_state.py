@@ -1,6 +1,7 @@
 import math
 import json
 import time
+import os
 
 class EricaId_State:
     def __init__(self):
@@ -12,10 +13,9 @@ class EricaId_State:
             "emotional_sensitivity":0.75,
             "formality":0.4
         }
-        self.primary_user_id = None
         
-        self.attachment = 0.0
-        self.interaction_count = 0
+        
+       
         self.current_session_user = None
         self.session_start_time = None
         self.last_seen_time = None
@@ -23,8 +23,8 @@ class EricaId_State:
         self.session_timeout = 3
         
         
-    
-        
+    #apparently commenting code is a good habit
+    #SESSION STARTING-ENDING LAYER 
     def start_session(self, identity_id):
         now = time.time()
         if self.current_session_user is None or self.current_session_user != identity_id:
@@ -40,44 +40,69 @@ class EricaId_State:
         now = time.time()
         
         if self.last_seen_time is not None and now - self.last_seen_time > self.session_timeout :
+            user = self.user_models[self.current_session_user]
             session_duration = self.last_seen_time - self.session_start_time
-            self.interaction_count += 1
-            self.attachment = 1 - math.exp(-0.15*self.interaction_count)
+            user["Interactions"] += 1
+            user["attachment"] = 1 - math.exp(-0.15*user["Interactions"])
             self.total_sessions +=1
             self.current_session_user = None
             self.session_start_time = None
             self.last_seen_time = None
             print("session duration:", session_duration)
+        self.save_state()
+    
+    #IDENTITY LAYER
     def upd_Identity(self, identity_id):
-        
-        if self.primary_user_id is None:
-            self.primary_user_id = identity_id
-            print("primary user:",identity_id)
-            
-        if identity_id == self.primary_user_id:
-            self.start_session(identity_id)
-            print("primary user detected")
-            print("Interactions:", self.interaction_count)
-            print("attachment:", round(self.attachment,3))
+        if identity_id not in self.user_models:
+            self.user_models[identity_id]={
+                "attachment":0.1,
+                "Interactions":0
+            }
+            print("Nice to meet you")
         else:
-            print("unknown person detected", identity_id)
+            print("Welcome back")
+        self.start_session(identity_id)
         self.end_session()
+    
+    #MEMORY SAVE-DUMP LAYER
     def save_state(self):
+        os.makedirs("Data", exist_ok=True)
         data = {
-           "Primary_user_id": self.primary_user_id,
-           "attachment":self.attachment ,
-           "Interactions":self.interaction_count
+            "users":[]
         }
-        with open("Data/state.json","w") as f:
-            json.dump(data,f)
+        for identity_id, user in self.user_models.items():
+            data["users"].append({
+                "id":identity_id,
+                "attachment":user["attachment"],
+                "Interactions": user["Interactions"]
+            })
+
+
+
+        with open("Data/state.json", "w") as f:
+            json.dump(data, f, indent=4)
+    
+    
     def load_data(self):
+        path = "Data/state.json"
+        if not os.path.exists(path):
+            print("No previous state found. Starting fresh")
+            self.user_models = {}
+            return
+        if os.path.getsize(path) == 0:
+            print("Empty state file. Starting fresh")
+            self.user_models = {}
+            return
         with open("Data/state.json","r") as f:
             data = json.load(f)
-        self.primary_user_id = data["Primary_user_id"]
-        self.attachment = data["attachment"]
-        self.interaction_count = data["Interactions"]
-        
-        
+        self.user_models = {}
+        for item in data["users"]:
+            
+            identity_id = int(item["id"])
+            self.user_models[identity_id]={
+                "attachment": item["attachment"],
+                "Interactions": item["Interactions"]
+            }
         
         
         

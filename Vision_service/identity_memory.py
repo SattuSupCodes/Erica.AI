@@ -1,12 +1,13 @@
 import numpy as np
-
+import json
+import os
 def cosine_similarity(a,b):
     a= np.array(a)
     b = np.array(b)
     return np.dot(a,b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 class IdentityMemory:
-    def __init__(self, threshold = 0.62):
+    def __init__(self, threshold = 0.60):
         self.identities = {}
         self.next_id = 0
         self.threshold = threshold
@@ -17,6 +18,7 @@ class IdentityMemory:
     def match_or_add(self, embedding):
         emb = np.array(embedding)
         emb = emb / np.linalg.norm(emb)
+        
         if not self.identities:
           new_id = self.next_id
           
@@ -56,9 +58,42 @@ class IdentityMemory:
         if len(self.pred_history)>self.history_size:
             self.pred_history.pop(0)
         return max(set(self.pred_history), key=self.pred_history.count)
+    
+    
+    def save_memory(self):
+        os.makedirs("Data", exist_ok =  True)
+        data = {
+            "next_id":self.next_id,
+            "identities":[]
+        }
+        for identity_id, info in  self.identities.items():
+            data["identities"].append({
+                "id":identity_id,
+                "centroid":info["centroid"].tolist(),
+                "count":info["count"]
+            })
+        with open("Data/identity_memory.json","w") as f:
+            json.dump(data,f, indent = 4)
+    
+    
     def load_memory(self):
-        pass
-    def save_memory():
-        pass
+        path = "Data/identity_memory.json"
+        if not os.path.exists(path):
+            print("No identity memory found. Starting fresh")
+            return
+        if os.path.getsize(path )== 0:
+            print("Empty identity memory. Starting fresh")
+            return
+        with open(path, "r") as f:
+            data = json.load(f)
+        self.next_id = data["next_id"]
+        self.identities= {}    
+        for item in data["identities"]:
+            identity_id = int(item["id"])  
+            self.identities[identity_id]={
+                "centroid":np.array(item["centroid"]),
+                "count":item["count"]
+            }  
+       
     
         

@@ -8,6 +8,7 @@ def main():
     memory = IdentityMemory(threshold = 0.65)
     brain = EricaId_State()
     # speak = EricaVoice()
+    memory.load_memory()
     brain.load_data()
     
     
@@ -22,9 +23,13 @@ def main():
             identity_id = memory.match_or_add(embeddings[0])
             brain.upd_Identity(identity_id)
         cv2.imshow("Erica's Vision", frame)
+        
         if cv2.waitKey(1)& 0xFF == ord("q"):
             
             break
+       
+    memory.save_memory()  
+    brain.save_state()  
     cap.release()
     cv2.destroyAllWindows()
     brain.save_state()
