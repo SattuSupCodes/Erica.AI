@@ -36,10 +36,10 @@ class EricaId_State:
             self.last_seen_time = now
             
             
-    def end_session(self):
+    def end_session(self, force=False):
         now = time.time()
         
-        if self.last_seen_time is not None and now - self.last_seen_time > self.session_timeout :
+        if self.last_seen_time is not None and ( force or now - self.last_seen_time > self.session_timeout ):
             user = self.user_models[self.current_session_user]
             session_duration = self.last_seen_time - self.session_start_time
             user["Interactions"] += 1
