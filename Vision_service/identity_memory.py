@@ -67,7 +67,7 @@ class IdentityMemory:
             if sim > best_sim:
                best_sim = sim
                best_id = identity_id
-        print("best simnilarity", best_sim)
+        # print("best simnilarity", best_sim)
         if best_sim >= self.threshold:
            old_cent = self.identities[best_id]["centroid"]
            old_count = self.identities[best_id]["count"]

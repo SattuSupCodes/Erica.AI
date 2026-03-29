@@ -21,13 +21,21 @@ class EricaId_State:
         self.last_seen_time = None
         self.total_sessions = 0
         self.session_timeout = 3
-        
+        self.last_announced_user = None
+        self.last_event = None
         
     #apparently commenting code is a good habit
     #SESSION STARTING-ENDING LAYER 
-    def start_session(self, identity_id):
+    def start_session(self, identity_id, is_new_user):
+        
         now = time.time()
         if self.current_session_user is None or self.current_session_user != identity_id:
+            print("Hello!")
+            if is_new_user:
+                print("Nice to meet you")
+            elif identity_id != self.last_announced_user:
+                print("Welcome back, cutie")
+            self.last_announced_user = identity_id
             self.session_start_time = now
             self.last_seen_time = now
             self.current_session_user = identity_id
@@ -48,20 +56,20 @@ class EricaId_State:
             self.current_session_user = None
             self.session_start_time = None
             self.last_seen_time = None
+            self.last_announced_user = None
             print("session duration:", session_duration)
         self.save_state()
     
     #IDENTITY LAYER
-    def upd_Identity(self, identity_id):
+    def upd_Identity(self, identity_id, is_new_user=False):
         if identity_id not in self.user_models:
             self.user_models[identity_id]={
                 "attachment":0.1,
                 "Interactions":0
             }
-            print("Nice to meet you")
-        else:
-            print("Welcome back")
-        self.start_session(identity_id)
+            is_new_user = True
+      
+        self.start_session(identity_id, is_new_user)
         self.end_session()
     
     #MEMORY SAVE-DUMP LAYER
