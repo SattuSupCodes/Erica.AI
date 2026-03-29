@@ -3,8 +3,8 @@ from insightface.app import FaceAnalysis
 import cv2
 class FaceAnalysisEngine:
     def __init__(self):
-        self.app = FaceAnalysis() 
-        self.app.prepare(ctx_id=0)
+        self.app = FaceAnalysis(name="buffalo_l") 
+        self.app.prepare(ctx_id=0, det_size=(640,640))
     def extract_embeddings(self,img):
         
         

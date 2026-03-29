@@ -10,6 +10,8 @@ def main():
     # speak = EricaVoice()
     memory.load_memory()
     brain.load_data()
+    unknown_counter = 0
+    UNKNOWN_THRESHOLD = 5
     
     
     cap = cv2.VideoCapture(0)
@@ -21,11 +23,28 @@ def main():
                 break
             embeddings = face_engine.extract_embeddings(frame)
             if embeddings:
-                identity_id = memory.match_or_add(embeddings[0])
-                brain.upd_Identity(identity_id)
+                embedding = embeddings[0]
+                match_id = memory.find_match(embedding)
+                if match_id is not None:
+                    unknown_counter = 0
+                    identity_id = match_id
+                    memory.match_or_add(embedding)
+                    brain.upd_Identity(identity_id)
+                else:
+                    unknown_counter += 1
+                    if unknown_counter >= UNKNOWN_THRESHOLD:
+                        
+                        if not memory.enrollment_mode:
+                            memory.start_enrollment()
+                        identity_id = memory.match_or_add(embedding)
             else:
                 brain.end_session()
             cv2.imshow("Erica's Vision", frame)
+            
+            
+            
+            
+          #------------keys---------------  
             
             key = cv2.waitKey(1)& 0xFF 
             if key == ord("e"):
