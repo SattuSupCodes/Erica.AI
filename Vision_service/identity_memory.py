@@ -7,7 +7,7 @@ def cosine_similarity(a,b):
     return np.dot(a,b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 class IdentityMemory:
-    def __init__(self, threshold = 0.60):
+    def __init__(self, threshold = 0.69):
         self.identities = {}
         self.next_id = 0
         self.threshold = threshold
@@ -16,7 +16,8 @@ class IdentityMemory:
         self.last_stable_id = None
         self.enrollment_mode = False
         self.enrollment_id = None
-    
+        self.just_enrolled = False
+       
 #---------------------------------------------------------  
     def start_enrollment(self):
         self.enrollment_mode = True
@@ -30,8 +31,35 @@ class IdentityMemory:
 #----------------------------------------------------------------      
     def stop_enrollment(self):
         self.enrollment_mode = False
+        self.just_enrolled = True
+        self.last_stable_id = self.enrollment_id
         print("Enrollment Complete")
 #-----------------------------------------------------------------
+    def find_match(self,embedding):
+       
+        emb = np.array(embedding)
+        emb = emb / np.linalg.norm(emb)
+        if self.just_enrolled:
+            self.just_enrolled = False
+            return self.last_stable_id
+        best_id = None
+        best_sim = -1
+        
+        for identity_id, data in self.identities.items():
+            if data["centroid"] is None:
+                continue
+            sim = np.dot(emb,data["centroid"])
+            if sim > best_sim:
+               best_sim = sim
+               best_id = identity_id
+        # print("best simnilarity", best_sim)
+        if best_sim >= self.threshold:
+            return best_id
+        elif best_sim >= 0.5:
+            return best_id
+        else:
+            return None
+#----------------------------------------------------------------------------
     def match_or_add(self, embedding):
         
         emb = np.array(embedding)
@@ -48,6 +76,7 @@ class IdentityMemory:
                 new_cent = new_cent / np.linalg.norm(new_cent)
                 self.identities[identity_id]["centroid"] = new_cent
                 self.identities[identity_id]["count"] = old_count + 1
+           
             return identity_id
              
         if not self.identities:
@@ -60,35 +89,12 @@ class IdentityMemory:
           
           self.next_id +=1
           return new_id
-        best_id = None
-        best_sim = -1
-        for identity_id, data in self.identities.items():
-            sim = np.dot(emb,data["centroid"])
-            if sim > best_sim:
-               best_sim = sim
-               best_id = identity_id
-        # print("best simnilarity", best_sim)
-        if best_sim >= self.threshold:
-           old_cent = self.identities[best_id]["centroid"]
-           old_count = self.identities[best_id]["count"]
-           new_cent = (old_cent * old_count + emb)/(old_count + 1)
-           new_cent = new_cent / np.linalg.norm(new_cent)
-           self.identities[best_id]["centroid"] = new_cent
-           self.identities[best_id]["count"]=old_count+1 #cheated on math part heuehuehuehehuehue
-           candidate_id = best_id
-        else:
-            new_id = self.next_id
-            self.identities[new_id] = {
-                "centroid": emb,
-                "count": 1
-            }
-            self.next_id +=1
-            candidate_id = new_id
-        self.pred_history.append(candidate_id)
+        
+        
         
         if len(self.pred_history)>self.history_size:
             self.pred_history.pop(0)
-        return max(set(self.pred_history), key=self.pred_history.count)
+        return None
 #-------------------------------------------------------------------------
     
     def save_memory(self):
