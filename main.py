@@ -2,7 +2,9 @@ from Vision_service.face_engine import FaceAnalysisEngine
 from Brain_service.brain_state import EricaId_State
 from Vision_service.identity_memory import IdentityMemory
 from Decision_service.decision_engine import DecisionEngine
+from Interaction_Service.verify_person import Verify
 import time
+from Interaction_Service.verified import load_verified, save_verified
 # from Voice.TTS_engine import EricaVoice
 from Vision_service.name import load_names, save_names
 import cv2
@@ -18,20 +20,46 @@ def main():
     UNKNOWN_THRESHOLD = 5
     last_greeted_id = None
     names = load_names()
-    asked_ids = set()
+   
     last_greet_time = 0
     greet_cooldown = 5
-    
+    verify = Verify()
     cap = cv2.VideoCapture(0)
+    verified_ids = load_verified()
     # speak("hello. Im erica")
     try:
         while True:
-            
+            #---------verification mode---------------------------
+
+            if verify.is_active:
+                if verify.should_ask():
+                    name = names.get(str(verify.target_id), f'user {verify.target_id}')
+                    print(f"Are you {name}? (yes/no)")
+                    verify.mark_asked()
+                response = input(">>")
+                result = verify.process_response(response)
+                if result == "confirmed":
+                    verified_ids.add(verify.target_id)
+                    save_verified(verified_ids)
+                    print("okiee yayyy")
+                    verify.reset()
+                elif result == "rejected":
+                    print("I don't know you. Lets get you enrolled")
+                    memory.start_enrollment()
+                    verify.reset()
+                elif result == "invalid":
+                    print("had one job. To answer in yes or no. Try again")
+                continue
+#-----------------------------------------------------------------------
+
             ret,frame = cap.read()
+
+
             if not ret:
                 break
             identity_id = None
             match_id = None
+            
             
             embeddings = face_engine.extract_embeddings(frame)
             if embeddings:
@@ -49,15 +77,18 @@ def main():
                         if not memory.enrollment_mode:
                             memory.start_enrollment()
                         identity_id = memory.match_or_add(embedding)
+                
                 is_known = match_id is not None
                 perception = {
                     "faces_detected": 1 if embeddings else 0
                 }
                 identity = {
                     "person_id": match_id if is_known else None,
-                    "confidence": 1.0 if match_id is not None else 0.0,
+                    "confidence": 0.7 if match_id is not None else 0.0,
                     "is_known": is_known
                 }
+                if identity["person_id"] is not None and identity["person_id"] in verified_ids:
+                    identity["confidence"] = 0.9
                 brain_state = {}
                 decision = decision_engine.decide(perception, identity, brain_state)
                 action = decision["action"]
@@ -69,7 +100,7 @@ def main():
                     person_id = decision.get("person_id")
                     current_time = time.time()
                     if person_id is None:
-                        return
+                        continue
                     if (
                         person_id != last_greeted_id or
                         current_time - last_greet_time > greet_cooldown
@@ -78,6 +109,42 @@ def main():
                         print(f"heyy {name}")
                         last_greeted_id = person_id
                         last_greet_time = current_time
+                    if str(person_id) not in names :
+                        name = input(f"What's your name? (ID {person_id}:) ")
+                        names[str(person_id)] = name
+                        save_names(names)
+                        
+                        print(f"Nice to meet you, {name}")
+                        continue
+                  
+                    current_id = decision.get("person_id")
+                    if current_id != last_greeted_id:
+                     
+                     last_greeted_id = current_id
+                elif action == "verify_identity":
+                    person_id = decision.get("person_id")
+                    if person_id in verified_ids:
+                        continue
+                    
+                    if not verify.is_active:
+                        verify.verify_start(person_id)
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+#-----not deleting this incase i ever EVER need references-----------
                     # if person_id not in names and person_id not in asked_ids:
                     #     name = input(f"What's your name? (ID {person_id}:) ")
                     #     names[str(person_id)] = name
@@ -92,7 +159,7 @@ def main():
                     # if current_id != last_greeted_id:
                      
                     #  last_greeted_id = current_id
-                    
+#-----------------------------------------------------------------------                   
                
             else:
                 brain.end_session()
