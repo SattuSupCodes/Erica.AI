@@ -35,9 +35,9 @@ class EricaId_State:
             print("Hello!")
            
             if is_new_user:
-                print("Nice to meet you")
+                print("Erica: Nice to meet you")
             elif identity_id != self.last_announced_user:
-                print("Welcome back, cutie")
+                print("Erica: Welcome back, cutie")
               
             self.last_announced_user = identity_id
             self.session_start_time = now

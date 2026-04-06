@@ -4,6 +4,7 @@ from Vision_service.identity_memory import IdentityMemory
 from Decision_service.decision_engine import DecisionEngine
 from Interaction_Service.verify_person import Verify
 import time
+from Brain_service.expression_controller import ExpressionController
 from Interaction_Service.verified import load_verified, save_verified
 # from Voice.TTS_engine import EricaVoice -> too heavy for MVP rn
 from Vision_service.name import load_names, save_names
@@ -11,11 +12,18 @@ from Interaction_Service.behavior import get_greeting, get_observation, get_veri
 import cv2
 from Vision_service.emotion_engine import EmotionEngine
 from collections import deque
+from Interaction_Service.state_manager import update_state
+import random
+import socket
+import json
 def main():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(('127.0.0.1', 65432))
     face_engine = FaceAnalysisEngine()
     memory = IdentityMemory(threshold = 0.65)
     brain = EricaId_State()
     # speak = EricaVoice()
+    exp = ExpressionController(sock)
     decision_engine = DecisionEngine()
     memory.load_memory()
     brain.load_data()
@@ -33,6 +41,7 @@ def main():
     last_emotion_time = 0
     emotion_cooldown = 2
     emotion_buffer = deque(maxlen=5)
+    
     
     # speak.speak("hello. Im erica")
     try:
@@ -114,11 +123,18 @@ def main():
                 brain_state = {}
                 decision = decision_engine.decide(perception, identity, brain_state)
                 action = decision["action"]
+                state = update_state(action)   
+                exp.apply(state)
                 if action == "idle":
+                    
                     continue
                 elif action == "observe":
-                    print(get_observation())
+                    print(f"Erica: {get_observation()}")
                 elif action == "greet":
+                    exp.apply("thinking")
+                    time.sleep(random.uniform(0.4,0.8))
+                    
+                    
                     context = "new"
                     person_id = decision.get("person_id")
                     current_time = time.time()
@@ -133,7 +149,9 @@ def main():
                             context = "long_time_sitting"
                         elif current_time - last_greet_time > greet_cooldown:
                             context = "returning"
-                        print(get_greeting(name,context, emotion))
+                        exp.apply("speaking")
+                        print(f"Erica: {get_greeting(name,context, emotion)}")
+                        exp.apply("idle")
                        
                         last_greeted_id = person_id
                         last_greet_time = current_time
@@ -141,7 +159,7 @@ def main():
                         name = input(f"What's your name? (ID {person_id}:) ")
                         names[str(person_id)] = name
                         save_names(names)
-                        print(f"Nice to meet you, {name}")
+                        print(f"Erica: Nice to meet you, {name}")
                        
                         continue
                   
@@ -156,13 +174,13 @@ def main():
                     
                     if not verify.is_active:
                         verify.verify_start(person_id)
+                
                     
                     
                     
                     
                     
-                    
-                    
+        #everytime i see this mess i've created, I lose 10 XPs out of my life            
                     
                     
                     
@@ -191,6 +209,7 @@ def main():
                
             else:
                 brain.end_session()
+                exp.idle()
                 last_greeted_id = None
             cv2.imshow("Erica's Vision", frame)
             
