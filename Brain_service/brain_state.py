@@ -2,6 +2,8 @@ import math
 import json
 import time
 import os
+from Voice.TTS_engine import EricaVoice
+# speak = EricaVoice()
 
 class EricaId_State:
     def __init__(self):
@@ -31,10 +33,12 @@ class EricaId_State:
         now = time.time()
         if self.current_session_user is None or self.current_session_user != identity_id:
             print("Hello!")
+           
             if is_new_user:
                 print("Nice to meet you")
             elif identity_id != self.last_announced_user:
                 print("Welcome back, cutie")
+              
             self.last_announced_user = identity_id
             self.session_start_time = now
             self.last_seen_time = now
