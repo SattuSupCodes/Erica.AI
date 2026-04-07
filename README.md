@@ -5,11 +5,11 @@ A perception-driven adaptive agent that learns user identity and behavior throug
 ## UI Interface
 ![ui-interface](https://github.com/user-attachments/assets/fbcf830e-66e9-4cd1-bd91-006bbf9ce3c6)
 
-## Demo 
+## Video Demo 
 
 https://github.com/user-attachments/assets/fdab77ec-cbb4-451d-8925-f5d365e25c48
 
-Video
+
 
 ## Key features
 - Persistent identity recognition
