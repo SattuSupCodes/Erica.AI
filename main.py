@@ -15,8 +15,29 @@ from collections import deque
 from Interaction_Service.state_manager import update_state
 import random
 import socket
+import threading
+from flask import Flask
+from flask_cors import CORS
+
 import json
+#-------------FLASK START---------------------------------------
+app = Flask(__name__)
+CORS(app)
+log_data = []
+def add_log(text):
+    log_data.append(text)
+    if len(log_data) > 50:
+        log_data.pop(0)
+@app.route("/log")
+def get_log():
+    return "\n".join(log_data)
+def run_server():
+    app.run(port=5000)
+
+
+#---------------FLASK END --------------------------------------
 def main():
+    threading.Thread(target=run_server, daemon = True).start()
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(('127.0.0.1', 65432))
     face_engine = FaceAnalysisEngine()
@@ -51,7 +72,9 @@ def main():
             if verify.is_active:
                 if verify.should_ask():
                     name = names.get(str(verify.target_id), f'user {verify.target_id}')
-                    print(get_verify_prompt(name))
+                    text = (get_verify_prompt(name))
+                    print(text)
+                    add_log(text)
                     
                     verify.mark_asked()
                 response = input(">>")
@@ -129,7 +152,9 @@ def main():
                     
                     continue
                 elif action == "observe":
-                    print(f"Erica: {get_observation()}")
+                    text = (f"Erica: {get_observation()}")
+                    print(text)
+                    add_log(text)
                 elif action == "greet":
                     exp.apply("thinking")
                     time.sleep(random.uniform(0.4,0.8))
@@ -150,7 +175,9 @@ def main():
                         elif current_time - last_greet_time > greet_cooldown:
                             context = "returning"
                         exp.apply("speaking")
-                        print(f"Erica: {get_greeting(name,context, emotion)}")
+                        text = (f"Erica: {get_greeting(name,context, emotion)}")
+                        print(text)
+                        add_log(text)
                         exp.apply("idle")
                        
                         last_greeted_id = person_id
@@ -159,8 +186,9 @@ def main():
                         name = input(f"What's your name? (ID {person_id}:) ")
                         names[str(person_id)] = name
                         save_names(names)
-                        print(f"Erica: Nice to meet you, {name}")
-                       
+                        text = (f"Erica: Nice to meet you, {name}")
+                        print(text)
+                        add_log(text)
                         continue
                   
                     current_id = decision.get("person_id")

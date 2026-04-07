@@ -47,3 +47,5 @@ def get_verify_prompt(name):
         f"let me check if you really are my {name} named friend"
     ]
     return random.choice(prompts)
+
+    

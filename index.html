@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ERiCA</title>
+    <style>
+        body {
+            background: black;
+            color: #00ff9f;
+            font-family: monospace;
+            padding: 20px;
+        }
+
+        #log {
+            border: 1px solid #00ff9f;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>ERiCA // EXPERIMENTAL INTERFACE</h2>
+
+<div id="log"></div>
+
+<script>
+async function updateLog() {
+    try {
+        let res = await fetch("http://127.0.0.1:5000/log");
+        let text = await res.text();
+
+        let logBox = document.getElementById("log");
+        logBox.innerText = text;
+
+        logBox.scrollTop = logBox.scrollHeight;
+    } catch (err) {
+        console.log("Error:", err);
+    }
+}
+
+setInterval(updateLog, 1000);
+</script>
+
+</body>
+</html>
