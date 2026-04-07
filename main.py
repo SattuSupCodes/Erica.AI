@@ -4,15 +4,47 @@ from Vision_service.identity_memory import IdentityMemory
 from Decision_service.decision_engine import DecisionEngine
 from Interaction_Service.verify_person import Verify
 import time
+from Brain_service.expression_controller import ExpressionController
 from Interaction_Service.verified import load_verified, save_verified
-# from Voice.TTS_engine import EricaVoice
+# from Voice.TTS_engine import EricaVoice -> too heavy for MVP rn
 from Vision_service.name import load_names, save_names
+from Interaction_Service.behavior import get_greeting, get_observation, get_verify_prompt
 import cv2
+from Vision_service.emotion_engine import EmotionEngine
+from collections import deque
+from Interaction_Service.state_manager import update_state
+import random
+import socket
+import threading
+from flask import Flask
+from flask_cors import CORS
+
+import json
+#-------------FLASK START---------------------------------------
+app = Flask(__name__)
+CORS(app)
+log_data = []
+def add_log(text):
+    log_data.append(text)
+    if len(log_data) > 50:
+        log_data.pop(0)
+@app.route("/log")
+def get_log():
+    return "\n".join(log_data)
+def run_server():
+    app.run(port=5000)
+
+
+#---------------FLASK END --------------------------------------
 def main():
+    threading.Thread(target=run_server, daemon = True).start()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(('127.0.0.1', 65432))
     face_engine = FaceAnalysisEngine()
     memory = IdentityMemory(threshold = 0.65)
     brain = EricaId_State()
     # speak = EricaVoice()
+    exp = ExpressionController(sock)
     decision_engine = DecisionEngine()
     memory.load_memory()
     brain.load_data()
@@ -20,13 +52,19 @@ def main():
     UNKNOWN_THRESHOLD = 5
     last_greeted_id = None
     names = load_names()
-   
+    emotions_engine = EmotionEngine()
     last_greet_time = 0
     greet_cooldown = 5
     verify = Verify()
     cap = cv2.VideoCapture(0)
     verified_ids = load_verified()
-    # speak("hello. Im erica")
+    last_emotion = "neutral"
+    last_emotion_time = 0
+    emotion_cooldown = 2
+    emotion_buffer = deque(maxlen=5)
+    
+    
+    # speak.speak("hello. Im erica")
     try:
         while True:
             #---------verification mode---------------------------
@@ -34,7 +72,10 @@ def main():
             if verify.is_active:
                 if verify.should_ask():
                     name = names.get(str(verify.target_id), f'user {verify.target_id}')
-                    print(f"Are you {name}? (yes/no)")
+                    text = (get_verify_prompt(name))
+                    print(text)
+                    add_log(text)
+                    
                     verify.mark_asked()
                 response = input(">>")
                 result = verify.process_response(response)
@@ -42,6 +83,7 @@ def main():
                     verified_ids.add(verify.target_id)
                     save_verified(verified_ids)
                     print("okiee yayyy")
+                    
                     verify.reset()
                 elif result == "rejected":
                     print("I don't know you. Lets get you enrolled")
@@ -49,6 +91,7 @@ def main():
                     verify.reset()
                 elif result == "invalid":
                     print("had one job. To answer in yes or no. Try again")
+                    
                 continue
 #-----------------------------------------------------------------------
 
@@ -77,7 +120,18 @@ def main():
                         if not memory.enrollment_mode:
                             memory.start_enrollment()
                         identity_id = memory.match_or_add(embedding)
-                
+                current_time = time.time()
+                if current_time - last_emotion_time > emotion_cooldown:
+                    new_emotion = emotions_engine.detect_emotion(frame)
+                    new_emotion = new_emotion or "neutral"
+                    emotion_buffer.append(new_emotion)
+                   
+                   
+                    last_emotion_time = current_time
+                if emotion_buffer:
+                        emotion = max(set(emotion_buffer), key = emotion_buffer.count)
+                else:
+                        emotion = "neutral"
                 is_known = match_id is not None
                 perception = {
                     "faces_detected": 1 if embeddings else 0
@@ -92,11 +146,21 @@ def main():
                 brain_state = {}
                 decision = decision_engine.decide(perception, identity, brain_state)
                 action = decision["action"]
+                state = update_state(action)   
+                exp.apply(state)
                 if action == "idle":
+                    
                     continue
                 elif action == "observe":
-                    print("hmm... I see...")
+                    text = (f"Erica: {get_observation()}")
+                    print(text)
+                    add_log(text)
                 elif action == "greet":
+                    exp.apply("thinking")
+                    time.sleep(random.uniform(0.4,0.8))
+                    
+                    
+                    context = "new"
                     person_id = decision.get("person_id")
                     current_time = time.time()
                     if person_id is None:
@@ -106,15 +170,25 @@ def main():
                         current_time - last_greet_time > greet_cooldown
                     ):
                         name = names.get(str(person_id), f"user {person_id}")
-                        print(f"heyy {name}")
+                        if person_id == last_greeted_id:
+                            context = "long_time_sitting"
+                        elif current_time - last_greet_time > greet_cooldown:
+                            context = "returning"
+                        exp.apply("speaking")
+                        text = (f"Erica: {get_greeting(name,context, emotion)}")
+                        print(text)
+                        add_log(text)
+                        exp.apply("idle")
+                       
                         last_greeted_id = person_id
                         last_greet_time = current_time
                     if str(person_id) not in names :
                         name = input(f"What's your name? (ID {person_id}:) ")
                         names[str(person_id)] = name
                         save_names(names)
-                        
-                        print(f"Nice to meet you, {name}")
+                        text = (f"Erica: Nice to meet you, {name}")
+                        print(text)
+                        add_log(text)
                         continue
                   
                     current_id = decision.get("person_id")
@@ -128,13 +202,13 @@ def main():
                     
                     if not verify.is_active:
                         verify.verify_start(person_id)
+                
                     
                     
                     
                     
                     
-                    
-                    
+        #everytime i see this mess i've created, I lose 10 XPs out of my life            
                     
                     
                     
@@ -163,6 +237,7 @@ def main():
                
             else:
                 brain.end_session()
+                exp.idle()
                 last_greeted_id = None
             cv2.imshow("Erica's Vision", frame)
             
