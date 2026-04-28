@@ -18,6 +18,7 @@ import socket
 import threading
 from flask import Flask
 from flask_cors import CORS
+import numpy as np
 
 import json
 #-------------FLASK START---------------------------------------
@@ -62,10 +63,13 @@ def main():
     last_emotion_time = 0
     emotion_cooldown = 2
     emotion_buffer = deque(maxlen=5)
+    landmark_buffer = deque(maxlen=5)
     
-    
+    def flatten_landmarks(landmarks):
+        return np.array(landmarks).flatten()
     # speak.speak("hello. Im erica")
     try:
+        
         while True:
             #---------verification mode---------------------------
 
@@ -96,6 +100,22 @@ def main():
 #-----------------------------------------------------------------------
 
             ret,frame = cap.read()
+#-------geometry hook-- -----------
+            try:
+                import requests
+                _, buffer = cv2.imencode('.jpg', frame)
+                response = requests.post(
+                    "http://127.0.0.1:8000/landmarks",
+                    files = {"file": ("frame.jpg", buffer.tobytes(), "image/jpeg")},
+                    timeout=0.1
+                )
+                geom_data = response.json()
+                landmarks = geom_data.get("landmarks", None)
+               
+            except Exception as e:
+                print("error in geometry", e)
+                landmarks = None
+#-------------------------------------------------------  
 
 
             if not ret:
@@ -132,10 +152,24 @@ def main():
                         emotion = max(set(emotion_buffer), key = emotion_buffer.count)
                 else:
                         emotion = "neutral"
+                flat_landmarks = None
+                if landmarks:
+                    flat_landmarks = flatten_landmarks(landmarks)
+                    landmark_buffer.append(flat_landmarks)
+                if landmark_buffer:
+                    stable_landmarks = np.mean(landmark_buffer, axis=0)
+                else:
+                    stable_landmarks = None
                 is_known = match_id is not None
                 perception = {
-                    "faces_detected": 1 if embeddings else 0
+                    "faces_detected": 1 if embeddings else 0,
+                    "identity_id":identity_id,
+                    "is_known": is_known,
+                    "emotion":emotion,
+                    "geometry":stable_landmarks
                 }
+                if stable_landmarks is not None:
+                  print("Geom vector:", len(stable_landmarks))
                 identity = {
                     "person_id": match_id if is_known else None,
                     "confidence": 0.7 if match_id is not None else 0.0,
