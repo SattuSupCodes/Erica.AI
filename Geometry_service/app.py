@@ -15,8 +15,9 @@ async def get_landmarks(file: UploadFile = File(...)):
     nparr = np.frombuffer(contents, np.uint8)
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    results = face_mesh.process(rgb)
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gray_3ch = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+    results = face_mesh.process(gray_3ch)
 
     if not results.multi_face_landmarks:
         return {"landmarks": None}
