@@ -37,6 +37,17 @@ def run_server():
 
 
 #---------------FLASK END --------------------------------------
+
+#----drawing display--------------
+def draw_landmarks(frame, landmarks):
+    h,w,_ = frame.shape
+    for (x,y) in landmarks:
+        px = int(x*w)
+        py = int(y*h)
+        cv2.circle(frame, (px,py), 1, (0,25,0), -1)
+    return frame
+#-------display end----------------
+
 def main():
     threading.Thread(target=run_server, daemon = True).start()
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -154,6 +165,7 @@ def main():
                         emotion = "neutral"
                 flat_landmarks = None
                 if landmarks:
+                    frame = draw_landmarks(frame,landmarks)
                     flat_landmarks = flatten_landmarks(landmarks)
                     landmark_buffer.append(flat_landmarks)
                 if landmark_buffer:
@@ -168,8 +180,8 @@ def main():
                     "emotion":emotion,
                     "geometry":stable_landmarks
                 }
-                if stable_landmarks is not None:
-                  print("Geom vector:", len(stable_landmarks))
+                # if stable_landmarks is not None:
+                #   print("Geom vector:", len(stable_landmarks))
                 identity = {
                     "person_id": match_id if is_known else None,
                     "confidence": 0.7 if match_id is not None else 0.0,
