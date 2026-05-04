@@ -7,7 +7,7 @@ def cosine_similarity(a,b):
     return np.dot(a,b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 class IdentityMemory:
-    def __init__(self, threshold = 0.69):
+    def __init__(self, threshold = 0.65):
         self.identities = {}
         self.next_id = 0
         self.threshold = threshold
@@ -24,16 +24,22 @@ class IdentityMemory:
         self.enrollment_id = self.next_id
         self.identities[self.enrollment_id]={
             "centroid": None,
-            "count":0
+            "count":0,
+            "embeddings":[]
         }  
         self.next_id += 1
         print("Enrollment started. Look around")  
 #----------------------------------------------------------------      
     def stop_enrollment(self):
+        if self.identities[self.enrollment_id]["count"] < 20:
+            print("Not enough samoles, continue enrollment")
+            self.enrollment_mode = True
+            return
         self.enrollment_mode = False
         self.just_enrolled = True
         self.last_stable_id = self.enrollment_id
         print("Enrollment Complete")
+        
 #-----------------------------------------------------------------
     def find_match(self,embedding):
        
@@ -46,57 +52,61 @@ class IdentityMemory:
         best_sim = -1
         
         for identity_id, data in self.identities.items():
-            if data["centroid"] is None:
+            if not data.get("embeddings"):
                 continue
-            sim = np.dot(emb,data["centroid"])
-            if sim > best_sim:
-               best_sim = sim
-               best_id = identity_id
+            for e in data["embeddings"]:
+              sim = np.dot(emb, e)
+              if sim> best_sim:
+                  best_sim = sim
+                  best_id = identity_id
         # print("best simnilarity", best_sim)
-        if best_sim >= self.threshold:
-            return best_id
-        elif best_sim >= 0.5:
-            return best_id
-        else:
-            return None
+        
+        if best_sim < self.threshold:
+            best_id = None
+        self.pred_history.append(best_id)
+        if len(self.pred_history) > self.history_size:
+            self.pred_history.pop(0)
+        if self.pred_history:
+            stable_id = max(set(self.pred_history), key=self.pred_history.count)
+            if self.pred_history.count(stable_id)>=3:
+                return stable_id
+        
+        return None
+        
+        
 #----------------------------------------------------------------------------
     def match_or_add(self, embedding):
-        
         emb = np.array(embedding)
         emb = emb / np.linalg.norm(emb)
+
+    
         if self.enrollment_mode:
             identity_id = self.enrollment_id
-            if self.identities[identity_id]["count"]==0:
-                self.identities[identity_id]["centroid"]=emb
-                self.identities[identity_id]["count"]= 1
+
+            if self.identities[identity_id]["count"] == 0:
+                self.identities[identity_id]["centroid"] = emb
+                self.identities[identity_id]["count"] = 1
             else:
                 old_cent = self.identities[identity_id]["centroid"]
                 old_count = self.identities[identity_id]["count"]
-                new_cent = (old_cent * old_count + emb)/(old_count + 1) 
+
+                new_cent = (old_cent * old_count + emb) / (old_count + 1)
                 new_cent = new_cent / np.linalg.norm(new_cent)
+
                 self.identities[identity_id]["centroid"] = new_cent
                 self.identities[identity_id]["count"] = old_count + 1
-           
+
+            self.identities[identity_id]["embeddings"].append(emb)
+
+            if len(self.identities[identity_id]["embeddings"]) > 30:
+                self.identities[identity_id]["embeddings"].pop(0)
+
             return identity_id
-             
-        if not self.identities:
-          new_id = self.next_id
-          
-          self.identities[new_id] = {
-              "centroid":emb,
-              "count":1
-          }
-          
-          self.next_id +=1
-          return new_id
+
         
-        
-        
-        if len(self.pred_history)>self.history_size:
-            self.pred_history.pop(0)
-        return None
+        return self.find_match(embedding)
 #-------------------------------------------------------------------------
-    
+
     def save_memory(self):
         os.makedirs("Data", exist_ok =  True)
         data = {
@@ -106,7 +116,7 @@ class IdentityMemory:
         for identity_id, info in  self.identities.items():
             if info["centroid"] is None:
                 continue
-             
+                
             data["identities"].append({
                 "id":identity_id,
                 "centroid":info["centroid"].tolist(),
@@ -114,8 +124,8 @@ class IdentityMemory:
             })
         with open("Data/identity_memory.json","w") as f:
             json.dump(data,f, indent = 4)
-    
-#------------------------------------------------------------------------  
+
+    #------------------------------------------------------------------------  
     def load_memory(self):
         path = "Data/identity_memory.json"
         if not os.path.exists(path):
@@ -134,4 +144,4 @@ class IdentityMemory:
                 "centroid":np.array(item["centroid"]),
                 "count":item["count"]
             }  
-       
+    

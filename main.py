@@ -13,6 +13,8 @@ import cv2
 from Vision_service.emotion_engine import EmotionEngine
 from collections import deque
 from Interaction_Service.state_manager import update_state
+from Vision_service.geom_utils import compute_devs
+from Vision_service.landmark_memory import UserMemory
 import random
 import socket
 import threading
@@ -75,6 +77,8 @@ def main():
     emotion_cooldown = 2
     emotion_buffer = deque(maxlen=5)
     landmark_buffer = deque(maxlen=5)
+    user_memories = {}
+    LM_THRESHOLD = 0.3
     
     def flatten_landmarks(landmarks):
         return np.array(landmarks).flatten()
@@ -118,7 +122,7 @@ def main():
                 response = requests.post(
                     "http://127.0.0.1:8000/landmarks",
                     files = {"file": ("frame.jpg", buffer.tobytes(), "image/jpeg")},
-                    timeout=0.1
+                    timeout=1
                 )
                 geom_data = response.json()
                 landmarks = geom_data.get("landmarks", None)
@@ -138,19 +142,25 @@ def main():
             embeddings = face_engine.extract_embeddings(frame)
             if embeddings:
                 embedding = embeddings[0]
-                match_id = memory.find_match(embedding)
-                if match_id is not None:
+                identity_id = memory.match_or_add(embedding)
+                if memory.enrollment_mode:
+                    print("enrollment count", memory.identities[memory.enrollment_id]["count"] )
+                    if identity_id is None:
+                        unknown_counter += 1
+                    else:
+                        unknown_counter = 0 
+               
+                    
+                # print("unknown counter", unknown_counter)
+                if (
+                    not memory.enrollment_mode and (
+                        unknown_counter >= UNKNOWN_THRESHOLD 
+                        or (identity_id is not None and identity_id not in verified_ids)
+                    )
+                ):
+                    print("Triggering enrollment...")
+                    memory.start_enrollment()
                     unknown_counter = 0
-                    identity_id = match_id
-                    memory.match_or_add(embedding)
-                    brain.upd_Identity(identity_id)
-                else:
-                    unknown_counter += 1
-                    if unknown_counter >= UNKNOWN_THRESHOLD:
-                        
-                        if not memory.enrollment_mode:
-                            memory.start_enrollment()
-                        identity_id = memory.match_or_add(embedding)
                 current_time = time.time()
                 if current_time - last_emotion_time > emotion_cooldown:
                     new_emotion = emotions_engine.detect_emotion(frame)
@@ -182,6 +192,8 @@ def main():
                 }
                 # if stable_landmarks is not None:
                 #   print("Geom vector:", len(stable_landmarks))
+                
+               
                 identity = {
                     "person_id": match_id if is_known else None,
                     "confidence": 0.7 if match_id is not None else 0.0,
@@ -248,10 +260,10 @@ def main():
                     
                     if not verify.is_active:
                         verify.verify_start(person_id)
-                
+               
                     
                     
-                    
+        #I AM LOSIMG MY MINDDDDDDDDDDDDDDDDDDDDD (5/5/2026)            
                     
                     
         #everytime i see this mess i've created, I lose 10 XPs out of my life            
@@ -305,6 +317,20 @@ def main():
                 break
             memory.save_memory()  
             brain.save_state()
+        if identity_id and stable_landmarks is not None:
+                    if identity_id not in user_memories:
+                        user_memories[identity_id] = UserMemory()
+                    user_memory = user_memories[identity_id]
+                    baseline = user_memory.get_baseline()
+                    
+                    if baseline is None:
+                        user_memory.add(stable_landmarks)
+                        print("building baseline...")
+                    else:
+                        deviation = compute_devs(stable_landmarks, baseline)
+                        print("Deviation", deviation)
+                        if deviation < LM_THRESHOLD:
+                            user_memory.add(stable_landmarks)
     
     #----------------------------------------------------------
     except KeyboardInterrupt:
