@@ -8,11 +8,13 @@ from Brain_service.expression_controller import ExpressionController
 from Interaction_Service.verified import load_verified, save_verified
 # from Voice.TTS_engine import EricaVoice -> too heavy for MVP rn
 from Vision_service.name import load_names, save_names
-from Interaction_Service.behavior import get_greeting, get_observation, get_verify_prompt
+from Interaction_Service.behavior import get_greeting, get_observation,get_state_observation, get_verify_prompt
 import cv2
 from Vision_service.emotion_engine import EmotionEngine
 from collections import deque
+from Decision_service.state_interpreter import interpret_state
 from Interaction_Service.state_manager import update_state
+
 import random
 import socket
 import threading
@@ -60,6 +62,8 @@ def main():
     decision_engine = DecisionEngine()
     memory.load_memory()
     brain.load_data()
+    last_state_time = 0
+    state_cooldown = 3
     unknown_counter = 0
     UNKNOWN_THRESHOLD = 5
     last_greeted_id = None
@@ -118,11 +122,12 @@ def main():
                 response = requests.post(
                     "http://127.0.0.1:8000/landmarks",
                     files = {"file": ("frame.jpg", buffer.tobytes(), "image/jpeg")},
-                    timeout=0.1
+                    timeout=1
                 )
                 geom_data = response.json()
                 landmarks = geom_data.get("landmarks", None)
-               
+                deviation = geom_data.get("deviation", None)
+                
             except Exception as e:
                 print("error in geometry", e)
                 landmarks = None
@@ -163,6 +168,7 @@ def main():
                         emotion = max(set(emotion_buffer), key = emotion_buffer.count)
                 else:
                         emotion = "neutral"
+                combined_state = interpret_state(emotion, deviation)
                 flat_landmarks = None
                 if landmarks:
                     frame = draw_landmarks(frame,landmarks)
@@ -178,7 +184,8 @@ def main():
                     "identity_id":identity_id,
                     "is_known": is_known,
                     "emotion":emotion,
-                    "geometry":stable_landmarks
+                    "geometry":stable_landmarks,
+                    "combined_state":combined_state
                 }
                 # if stable_landmarks is not None:
                 #   print("Geom vector:", len(stable_landmarks))
@@ -195,10 +202,15 @@ def main():
                 state = update_state(action)   
                 exp.apply(state)
                 if action == "idle":
-                    
-                    continue
+                   if combined_state != "neutral" and current_time - last_state_time > state_cooldown:
+                       text = f"Erica: {get_state_observation(combined_state,emotion)}"
+                       print(text)
+                       add_log(text)
+                       last_state_time = current_time
+                   continue
+                   
                 elif action == "observe":
-                    text = (f"Erica: {get_observation()}")
+                    text = (f"Erica: {get_state_observation(combined_state, emotion)}")
                     print(text)
                     add_log(text)
                 elif action == "greet":

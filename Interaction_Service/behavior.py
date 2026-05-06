@@ -34,6 +34,19 @@ def get_greeting(name, context, emotion=None):
                               f"this is fun, {name}"]
         }
     return random.choice(greetings.get(context, [f"hey {name}"]))
+def get_state_observation(combibned_state, emotion):
+    if combibned_state == "neutral":
+        return "you're pretty still today"
+    if "subtle" in combibned_state:
+        return f"hmm.. slight {emotion} vibe"
+    if "strong" in combibned_state:
+        if emotion == "happy":
+            return "wow, you look delightful today"
+        elif emotion == "sad":
+            return "you good?"
+        else:
+            return f"that's a strong {emotion} right there"
+    return "hmm.. i'M trying to read you"
 def get_observation():
     observations = [
         "hmmm....I see...",
