@@ -8,7 +8,7 @@ from Brain_service.expression_controller import ExpressionController
 from Interaction_Service.verified import load_verified, save_verified
 # from Voice.TTS_engine import EricaVoice -> too heavy for MVP rn
 from Vision_service.name import load_names, save_names
-from Interaction_Service.behavior import get_greeting, get_observation,get_state_observation, get_verify_prompt
+from Interaction_Service.behavior import get_greeting,get_state_observation, get_verify_prompt
 import cv2
 from Vision_service.emotion_engine import EmotionEngine
 from collections import deque
@@ -16,6 +16,7 @@ from Decision_service.state_interpreter import interpret_state
 from Interaction_Service.state_manager import update_state
 from Vision_service.geom_utils import compute_devs
 from Vision_service.landmark_memory import UserMemory
+from Vision_service.data_logger import DataLogger
 import random
 import socket
 import threading
@@ -63,6 +64,8 @@ def main():
     decision_engine = DecisionEngine()
     memory.load_memory()
     brain.load_data()
+    logger = DataLogger()
+    current_label = None
     last_state_time = 0
     state_cooldown = 3
     unknown_counter = 0
@@ -199,7 +202,8 @@ def main():
                 # if stable_landmarks is not None:
                 #   print("Geom vector:", len(stable_landmarks))
                 
-               
+                if current_label and stable_landmarks is not None:
+                    logger.log(stable_landmarks, current_label)
                 identity = {
                     "person_id": match_id if is_known else None,
                     "confidence": 0.7 if match_id is not None else 0.0,
@@ -326,6 +330,11 @@ def main():
                 brain.save_state()
                 memory.save_memory()
                 break
+            #our training console hurrayayayayyayayay
+            if key == ord("1"): current_label = "neutral"
+            if key == ord("2") : current_label = "happy"
+            if key == ord("3"): current_label = "sad"
+            if key == ord("4"): current_label = "angry"
             memory.save_memory()  
             brain.save_state()
         if identity_id and stable_landmarks is not None:

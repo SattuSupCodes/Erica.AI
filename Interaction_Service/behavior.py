@@ -47,12 +47,12 @@ def get_state_observation(combibned_state, emotion):
         else:
             return f"that's a strong {emotion} right there"
     return "hmm.. i'M trying to read you"
-def get_observation():
-    observations = [
-        "hmmm....I see...",
-        "I'm watching in a non creepy way",
-        "Aha...."
-    ]
+# # def get_observation():
+#     observations = [
+#         "hmmm....I see...",
+#         "I'm watching in a non creepy way",
+#         "Aha...."
+#     ]
     return random.choice(observations)
 def get_verify_prompt(name):
     prompts = [
