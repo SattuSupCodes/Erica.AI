@@ -32,7 +32,7 @@ def get_greeting(name, context, emotion=None):
                               "soo are you doin something or just sitting?",
                               f"wow {name}, you're really committed to this huh ",
                               f"this is fun, {name}"]
-        }
+        }#hello checking git push cause its not showing in branch
     return random.choice(greetings.get(context, [f"hey {name}"]))
 def get_state_observation(combibned_state, emotion):
     if combibned_state == "neutral":
