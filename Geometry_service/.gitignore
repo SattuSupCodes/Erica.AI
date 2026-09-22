@@ -1,0 +1,30 @@
+# ---- Virtual Environment ----
+geom_venv/
+venv/
+.env/
+
+# ---- Python cache ----
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ---- Logs ----
+*.log
+
+# ---- OS files ----
+.DS_Store
+Thumbs.db
+
+# ---- IDE ----
+.vscode/
+.idea/
+
+# ---- Temp files ----
+*.tmp
+*.temp
+
+# ---- Media / test dumps (optional) ----
+*.jpg
+*.png
+*.mp4
