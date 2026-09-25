@@ -15,7 +15,7 @@ __pycache__/
 data/
 memory.json
 erica_state.json
-
+Research/
 # OS junk
 .DS_Store
 Thumbs.db
